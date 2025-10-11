@@ -26,3 +26,15 @@ The Flower-based FL tool provides a convenient way to run a Federated Learnign (
 - example with SLURM:
   - run the server: `python slurm-launch.py   --exp-name flower_server   --num-nodes 1   --partition all   --load-env "source ~/.bashrc && eval \"\$(conda shell.bash hook)\" && conda activate flower_env"   --command "python run.py"`
   - run the clients as: `bash launch_all_cleints.sh`  
+
+## License
+This project is licensed under the [MIT License](LICENSE) – see the license file for details.
+
+## Disclaimer
+ Tfe Flower-based FL tool was developed under the TaRDIS project, which has received funding under granta agreement No 101093006, by the Swiss State Secretariat for Education, Research and Innovation (SERI).
+
+ ## Contact
+ - nemanjab4h@gmail.com
+ - lidija.fodor@dmi.uns.ac.rs
+
+
