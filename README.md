@@ -31,7 +31,7 @@ The Flower-based FL tool provides a convenient way to run a Federated Learnign (
 This project is licensed under the [MIT License](LICENSE) – see the license file for details.
 
 ## Disclaimer
- Tfe Flower-based FL tool was developed under the TaRDIS project, which has received funding under granta agreement No 101093006, by the Swiss State Secretariat for Education, Research and Innovation (SERI).
+ Tfe Flower-based FL tool was developed under the TaRDIS project, which has received funding under grant agreement No 101093006, by the Swiss State Secretariat for Education, Research and Innovation (SERI).
 
  ## Contact
  - nemanjab4h@gmail.com
