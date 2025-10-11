@@ -2,14 +2,21 @@
 
 The Flower-based FL tool provides a convenient way to run a Federated Learnign (FL) task.
 
+## Fatures
+- Modular design: easily extend models, datasets, and algorithms  
+- GUI-based configuration, that provides only applicable chioces
+- Supports classification and anomaly detection tasks  
+- Built-in data preparation utilities for any CSV dataset  
+
+
 ## Setting up the training
 - Use gui.py to select the training properties or fill manually the files conf/config_common.yaml, conf/config_server.yaml, conf/config_client.yaml
   
 ## Instalation and run
 
 - The project requires Python 3.10 or Python 3.11.
-- Create a virtual environment and activate it (recommended, but optional)
-- install the requirements: `pip install -r requirements.txt`
+- Create a virtual environment and activate it (optional, but recommended)
+- Install the requirements: `pip install -r requirements_stable.txt`
 - Start the server as: `python3 run.py`
 - Start the clients as e.g. (choose a client type): `python3 -m clients.clientTR --client_id 1 --data_path ./data/mnist/client1`
 
