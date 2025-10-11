@@ -4,7 +4,7 @@ The Flower-based FL tool provides a convenient way to run a Federated Learnign (
 
 ## Setting up the training
 - Use gui.py to select the training properties or fill manually the files conf/config_common.yaml, conf/config_server.yaml, conf/config_client.yaml
-- 
+  
 ## Instalation and run
 
 - The project requires Python 3.10 or Python 3.11.
