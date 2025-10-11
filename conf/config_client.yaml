@@ -1,0 +1,16 @@
+client_id: 1
+batch_size: 16
+device: cpu
+learning_rate: 0.001
+epochs: 1
+momentum: 0.9
+config_fit_pfedme:
+  local_rounds: 1
+  lambda_reg: 0.01
+  mu: 0.1
+
+
+# AE-specific params (if needed)
+input_dim: 25
+hidden_dim: 10
+output_dim: 25

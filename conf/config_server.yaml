@@ -1,0 +1,20 @@
+num_rounds: 5
+num_clients: 2
+batch_size: 16
+min_available_clients: 2
+min_fit_clients: 2
+min_evaluate_clients: 2
+fraction_fit: 1
+fraction_evaluate: 1
+client_resources: {num_cpus: 1, num_gpus: 0}
+learning_rate: 0.0001
+epochs: 1
+momentum: 0.9
+config_fit_fedavg: {}
+config_fit_pfedme:
+  local_rounds: 1
+  local_iterations: 1
+  lambda_reg: 1
+  mu: 0.1
+  new: false
+

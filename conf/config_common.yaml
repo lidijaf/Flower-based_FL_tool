@@ -1,0 +1,34 @@
+#choices AE
+#task: anomaly detection
+#dataset: metro
+#model: Autoencoder
+#algorithm: fedavg
+
+#choices CNN
+#task: classification
+#dataset: mnist
+#model: CNN_MNIST
+#algorithm: fedavg
+
+# choices TR
+task: anomaly detection
+dataset: mnist
+model: AE_Model
+algorithm: fedavg  # or pfedme
+
+# dataset
+iid_partition: true
+
+input_c: 25
+output_c: 25
+win_size: 100
+k: 3
+step: 100
+seed: 42
+val_ratio: 0.2
+num_workers: 0
+num_labels_per_partition: 5
+min_data_per_partition: 10
+mean: 0.0
+sigma: 2.0
+
