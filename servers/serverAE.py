@@ -1,27 +1,31 @@
-import sys
 import os
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from typing import Dict
 
-import torch
 import numpy as np
-from flwr.common import Metrics
+import torch
+
 from models.modelAE import Autoencoder, test
 from utils import get_cfg
 
-# --------------------------
-# Threshold storage
-threshold_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "threshold")
-os.makedirs(threshold_dir, exist_ok=True)
-os.chdir(threshold_dir)
-# --------------------------
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+THRESHOLD_DIR = os.path.join(BASE_DIR, "data", "threshold")
+THRESHOLD_FILE = os.path.join(THRESHOLD_DIR, "threshold_server.txt")
+os.makedirs(THRESHOLD_DIR, exist_ok=True)
+
+
+def load_server_config():
+    shared_cfg = get_cfg("conf/config_common.yaml")
+    server_cfg = get_cfg("conf/config_server.yaml")
+    return {**shared_cfg, **server_cfg}
 
 
 def get_evaluate_config_fn(metrics_dict: Dict):
     """Return evaluation configuration for each round."""
     def evaluate_config(server_round: int):
         return {
-            "aggregated_threshold": metrics_dict.get("aggregated_threshold", 0)
+            "aggregated_threshold": metrics_dict.get("aggregated_threshold", 0.0)
         }
     return evaluate_config
 
@@ -29,47 +33,43 @@ def get_evaluate_config_fn(metrics_dict: Dict):
 def get_evaluate_fn(testloader, metrics_dict: Dict):
     """Define function for global evaluation on the server."""
     def evaluate_fn(server_round: int, parameters, config):
-        from omegaconf import OmegaConf
+        cfg = load_server_config()
 
-        # Load configs
-        shared_cfg = OmegaConf.to_container(get_cfg("conf/config_common.yaml"), resolve=True)
-        server_cfg = OmegaConf.to_container(get_cfg("conf/config_server.yaml"), resolve=True)
-        cfg = {**shared_cfg, **server_cfg}
-
-        # Sample input dimension
         sample_x, _ = next(iter(testloader))
         input_dim = sample_x.view(sample_x.size(0), -1).size(1)
 
-        # Initialize model
         model = Autoencoder(input_dim=input_dim)
-        device = torch.device(cfg.get("device"))
+        device_name = cfg.get("device") or "cpu"
+        device = torch.device(device_name)
 
-        # Load threshold from file if exists
-        filename = "threshold_server.txt"
-        if os.path.exists(filename):
-            with open(filename, "r") as f:
+        if os.path.exists(THRESHOLD_FILE):
+            with open(THRESHOLD_FILE, "r") as f:
                 threshold = float(f.read().strip())
         else:
-            threshold = 0
+            threshold = 0.0
 
-        # Convert Flower parameters to state_dict
         model_keys = list(model.state_dict().keys())
-        state_dict = OrderedDict({k: torch.tensor(v).to(device) for k, v in zip(model_keys, parameters)})
+        state_dict = OrderedDict(
+            {k: torch.tensor(v).to(device) for k, v in zip(model_keys, parameters)}
+        )
         model.load_state_dict(state_dict, strict=True)
         model.to(device)
 
-        # Evaluate
         loss, accuracy, precision, recall, f1_score = test(model, testloader, threshold)
-        metrics_dict["evaluate_accuracy"].append(accuracy)
-        metrics_dict["evaluate_precision"].append(precision)
-        metrics_dict["evaluate_recall"].append(recall)
-        metrics_dict["evaluate_f1_score"].append(f1_score)
+
+        for key, value in {
+            "evaluate_accuracy": accuracy,
+            "evaluate_precision": precision,
+            "evaluate_recall": recall,
+            "evaluate_f1_score": f1_score,
+        }.items():
+            metrics_dict.setdefault(key, []).append(value)
 
         return float(loss), {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
-            "f1_score": f1_score
+            "f1_score": f1_score,
         }
 
     return evaluate_fn
@@ -95,6 +95,7 @@ def get_weighted_average_fit(metrics_dict: Dict):
                 continue
 
             examples.append(num_examples)
+
             if algorithm == "pfedme":
                 loss_personal.append(num_examples * m.get("reconstruction_loss_personalized", 0))
                 loss_local.append(num_examples * m.get("reconstruction_loss_local_global", 0))
@@ -109,19 +110,16 @@ def get_weighted_average_fit(metrics_dict: Dict):
         if algorithm == "pfedme":
             result["reconstruction_loss_personalized"] = sum(loss_personal) / sum(examples)
             result["reconstruction_loss_local_global"] = sum(loss_local) / sum(examples)
-            result["train_loss"] = sum(train_losses) / sum(examples)
-        else:
-            result["train_loss"] = sum(train_losses) / sum(examples)
 
-        # **Append to lists instead of overwriting**
-        for k, v in result.items():
-            if k not in metrics_dict:
-                metrics_dict[k] = []
-            metrics_dict[k].append(v)
+        result["train_loss"] = sum(train_losses) / sum(examples)
+
+        for key, value in result.items():
+            metrics_dict.setdefault(key, []).append(value)
 
         return result
 
     return aggregate
+
 
 def get_weighted_average_eval(metrics_dict: Dict):
     def aggregate(metrics: list) -> dict:
@@ -145,20 +143,13 @@ def get_weighted_average_eval(metrics_dict: Dict):
         avg_threshold = float(np.mean(thresholds)) if thresholds else 0.0
         avg_loss = sum(losses) / sum(examples) if examples else 0.0
 
-        # Save threshold
-        with open("threshold_server.txt", "w") as f:
+        with open(THRESHOLD_FILE, "w") as f:
             f.write(str(avg_threshold))
 
-        # Append to metrics_dict lists
-        if "client_eval_loss" not in metrics_dict:
-            metrics_dict["client_eval_loss"] = []
-        if "threshold" not in metrics_dict:
-            metrics_dict["threshold"] = []
-
-        metrics_dict["client_eval_loss"].append(avg_loss)
-        metrics_dict["threshold"].append(avg_threshold)
+        metrics_dict.setdefault("client_eval_loss", []).append(avg_loss)
+        metrics_dict.setdefault("threshold", []).append(avg_threshold)
+        metrics_dict["aggregated_threshold"] = avg_threshold
 
         return {"client_eval_loss": avg_loss, "threshold": avg_threshold}
 
     return aggregate
-
