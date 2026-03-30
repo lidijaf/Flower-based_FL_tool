@@ -1,40 +1,278 @@
-# Flower-based_FL_tool
+# Flower-based Federated Learning Tool
 
-The Flower-based FL tool provides a convenient way to run a Federated Learnign (FL) task.
+A modular framework for running **Federated Learning (FL)** experiments using Flower.
 
-## Fatures
-- Modular design: easily extend models, datasets, and algorithms  
-- GUI-based configuration, that provides only applicable chioces
-- Supports classification and anomaly detection tasks  
-- Built-in data preparation utilities for any CSV dataset  
+This tool supports both **simulation environments** and **real-world distributed setups**, with a user-friendly GUI for configuration and a flexible architecture for research and experimentation.
 
+---
 
-## Setting up the training
-- Use gui.py to select the training properties or fill manually the files conf/config_common.yaml, conf/config_server.yaml, conf/config_client.yaml
-  
-## Instalation and run
+## 🚀 Key Features
 
-- The project requires Python 3.10 or Python 3.11.
-- Create a virtual environment and activate it (optional, but recommended)
-- Install the requirements: `pip install -r requirements_stable.txt`
-- Start the server as: `python3 run.py`
-- Start the clients as e.g. (choose a client type): `python3 -m clients.clientTR --client_id 1 --data_path ./data/mnist/client1`
+- 🖥️ Interactive GUI Configuration  
+  - No manual YAML editing required  
+  - Valid combinations only (task–dataset–model–algorithm)
 
-## Running on a cluster
+- 🔄 Two Operating Modes  
+  - Simulation Mode → centralized experiments  
+  - Real Mode → distributed client/server setup  
 
-- use and adjust the provided scripts
-- example with SLURM:
-  - run the server: `python slurm-launch.py   --exp-name flower_server   --num-nodes 1   --partition all   --load-env "source ~/.bashrc && eval \"\$(conda shell.bash hook)\" && conda activate flower_env"   --command "python run.py"`
-  - run the clients as: `bash launch_all_cleints.sh`  
+- 🧠 Supported Tasks  
+  - Classification (e.g., MNIST)  
+  - Anomaly Detection (Autoencoder, Transformer)  
 
-## License
-This project is licensed under the [MIT License](LICENSE) – see the license file for details.
+- 🧩 Modular Design  
+  - Plug-and-play models, datasets, and strategies  
+  - Easy to extend for research purposes  
 
-## Disclaimer
- Tfe Flower-based FL tool was developed under the TaRDIS project, which has received funding under grant agreement No 101093006, by the Swiss State Secretariat for Education, Research and Innovation (SERI).
+- 📂 Custom Dataset Support  
+  - Works with your own data (CSV or tensor formats)  
 
- ## Contact
- - nemanjab4h@gmail.com
- - lidija.fodor@dmi.uns.ac.rs
+- ⚙️ Unified Client Launcher  
+  - No need to manually pass dataset paths at runtime  
 
+---
 
+## ⚙️ Installation
+
+### Requirements
+- Python 3.10 or 3.11  
+
+### Setup
+
+```bash
+git clone <your-repo-url>
+cd Flower-based_FL_tool
+
+python -m venv flower_env
+source flower_env/bin/activate      # Linux/macOS
+# or
+flower_env\Scripts\activate         # Windows
+
+pip install -r requirements_stable.txt
+```
+
+---
+
+## 🧭 Configuration
+
+Launch the configuration interface:
+
+```bash
+python configure.py
+```
+
+---
+
+## 🧠 Configuration Modes
+
+### 🔹 1. Simulation Mode
+
+Used for experiments on a single machine.
+
+- Data is split into multiple virtual clients  
+- Configure:
+  - task, dataset, model  
+  - number of clients  
+  - FL parameters  
+
+---
+
+### 🔹 2. Real Mode
+
+Used for distributed systems.
+
+You choose:
+
+#### 🖥️ Server Setup
+- Number of rounds  
+- Aggregation parameters  
+- Global model settings  
+
+#### 💻 Client Setup
+- Local dataset path  
+- Server address  
+
+Each client runs independently using its own configuration.
+
+---
+
+## 📁 Custom Dataset Support
+
+### Simulation Mode
+
+Your dataset must follow:
+
+```
+your_dataset/
+├── client1/
+│   ├── train.csv
+│   ├── test.csv
+│   └── val.csv
+├── client2/
+│   ├── ...
+```
+
+Each folder represents one simulated client.
+
+---
+
+### Real Mode
+
+Each client simply points to its local dataset directory.
+
+---
+
+## ▶️ Running the System
+
+### 1. Start the Server
+
+```bash
+python start_server.py
+```
+
+---
+
+### 2. Start Clients
+
+```bash
+python -m clients.start_client --client_id 1
+```
+
+- No need to pass dataset path  
+- Everything is read from configuration  
+
+---
+
+## 🧪 Example Workflow
+
+1. Run GUI:
+```bash
+python configure.py
+```
+
+2. Choose:
+- Simulation mode  
+- MNIST + CNN  
+- FedAvg  
+
+3. Start server:
+```bash
+python start_server.py
+```
+
+4. Start clients:
+```bash
+python -m clients.start_client --client_id 1
+python -m clients.start_client --client_id 2
+```
+
+---
+
+## 📊 Outputs
+
+All results are stored in:
+
+```
+outputs/
+```
+
+Includes:
+- Training curves (.png)  
+- Metrics (.npy)  
+- Anomaly outputs (.npz)  
+
+---
+
+## 🏗️ Project Structure
+
+```
+.
+├── clients/
+├── servers/
+├── models/
+├── data_preparations/
+├── conf/
+├── data/
+├── outputs/
+│
+├── configure.py
+├── start_server.py
+├── utils.py
+```
+
+---
+
+## 🧩 Extending the Framework
+
+### Add a new model
+- Add it in `models/`  
+- Register it in GUI  
+
+### Add a new dataset
+- Add loader in `data_preparations/`  
+- Define structure in GUI validation  
+
+### Add a new algorithm
+- Implement logic in:
+  - `clients/`  
+  - `servers/`  
+
+---
+
+## 🧑‍💻 Running on a Cluster (SLURM)
+
+Example:
+
+```bash
+python slurm-launch.py   --exp-name flower_server   --num-nodes 1   --partition all   --command "python start_server.py"
+```
+
+Run clients:
+
+```bash
+bash launch_all_clients.sh
+```
+
+---
+
+## ⚠️ Important Notes
+
+- Configuration is stored in:
+  - `config_common.yaml`  
+  - `config_server.yaml`  
+  - `config_client.yaml`  
+
+- Recommended `.gitignore` entries:
+  outputs/
+  __pycache__/
+  *.pth
+  *.npz
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.
+
+---
+
+## ⚠️ Disclaimer
+
+This tool was developed within the TaRDIS project  
+(Grant agreement No. 101093006), funded by the Swiss State Secretariat for Education, Research and Innovation (SERI).
+
+---
+
+## 📧 Contact
+
+- nemanjab4h@gmail.com  
+- lidija.fodor@dmi.uns.ac.rs  
+
+---
+
+## ⭐ Final Note
+
+This tool is designed for:
+- research reproducibility  
+- rapid FL experimentation  
+- bridging simulation and real deployment  
