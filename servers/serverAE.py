@@ -77,7 +77,7 @@ def get_evaluate_fn(testloader, metrics_dict: Dict):
 
 def get_weighted_average_fit(metrics_dict: Dict):
     def aggregate(metrics: list) -> dict:
-        cfg = get_cfg()
+        cfg = get_cfg("conf/config_common.yaml")
         algorithm = cfg.get("algorithm")
 
         examples = []

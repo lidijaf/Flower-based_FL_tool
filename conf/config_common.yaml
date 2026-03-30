@@ -1,22 +1,51 @@
-#choices AE
-#task: anomaly detection
-#dataset: metro
-#model: Autoencoder
-#algorithm: fedavg
+# ============================================================
+# Supported configuration combinations
+# ============================================================
+#
+# 1) Transformer + PSM
+# task: anomaly detection
+# dataset: psm
+# model: Transformer
+# algorithm: fedavg
+#
+# 2) Transformer + Metro
+# task: anomaly detection
+# dataset: metro
+# model: Transformer
+# algorithm: fedavg
+#
+# 3) Autoencoder + PSM
+# task: anomaly detection
+# dataset: psm
+# model: Autoencoder
+# algorithm: fedavg
+#
+# 4) Autoencoder + Metro
+# task: anomaly detection
+# dataset: metro
+# model: Autoencoder
+# algorithm: fedavg
+#
+# 5) CNN + MNIST
+# task: classification
+# dataset: mnist
+# model: CNN_MNIST
+# algorithm: fedavg
+#
+# ============================================================
+# Active configuration
+# Change only this block when switching experiments
+# ============================================================
 
-#choices CNN
-#task: classification
-#dataset: mnist
-#model: CNN_MNIST
-#algorithm: fedavg
-
-# choices TR
-task: anomaly detection
+task: classification
 dataset: mnist
-model: AE_Model
-algorithm: fedavg  # or pfedme
+model: CNN_MNIST
+algorithm: fedavg
 
-# dataset
+# ============================================================
+# Dataset / partition settings
+# ============================================================
+
 iid_partition: true
 
 input_c: 25
@@ -31,4 +60,4 @@ num_labels_per_partition: 5
 min_data_per_partition: 10
 mean: 0.0
 sigma: 2.0
-
+device: cpu

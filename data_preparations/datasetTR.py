@@ -16,16 +16,17 @@ from sklearn.preprocessing import StandardScaler
 import os
 base_dir = os.path.dirname(os.path.dirname(__file__))
 #config_file_path = os.path.join(base_dir, "conf", "config.yaml")
-data_path = os.path.join(base_dir, "data/Pooled Server Metrics (PSM)/client2")
+#data_path = os.path.join(base_dir, "data/Pooled Server Metrics (PSM)/client2")
 
 from omegaconf import OmegaConf
 
-shared_cfg = OmegaConf.to_container(get_cfg("conf/config_common.yaml"), resolve=True)
-client_cfg = OmegaConf.to_container(get_cfg("conf/config_client.yaml"), resolve=True)
+#shared_cfg = OmegaConf.to_container(get_cfg("conf/config_common.yaml"), resolve=True)
+#client_cfg = OmegaConf.to_container(get_cfg("conf/config_client.yaml"), resolve=True)
 
 # merge
-config_file_path = {**shared_cfg, **client_cfg}
+#config_file_path = {**shared_cfg, **client_cfg}
 
+config_file_path = os.path.join(base_dir, "conf", "config_common.yaml")
 
 #config_file_path = "/conf/config.yaml"
 yaml = YAML()
@@ -106,6 +107,9 @@ def load_data(cfg, mislabel_percent: float = 0.0) -> Tuple[DataLoader, DataLoade
     #cfg = get_cfg()
     #data_path = cfg["data_path"]
     # data_path = 'C://Users//neman//PycharmProjects//data//Pooled Server Metrics (PSM) split//client1'
+
+    data_path = cfg["data_path"]
+
     scaler = StandardScaler()
     data = pd.read_csv(data_path + '/train.csv')
     data = data.values[:, 1:]

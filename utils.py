@@ -21,7 +21,7 @@ def get_cfg(config_path=None):
 
     if config_path is None:
         # default
-        config_path = os.path.join(base_dir, "conf", "config.yaml")
+        config_path = os.path.join(base_dir, "conf", "config_common.yaml")
     else:
         # If a relative path is passed, make it relative to base_dir
         if not os.path.isabs(config_path):
@@ -35,7 +35,7 @@ def get_cfg(config_path=None):
 
 
 
-#def get_cfg(config_path="C://Users//neman//PycharmProjects//tool_demo//conf//config.yaml"):
+#def get_cfg(config_path="C://Users//neman//PycharmProjects//tool_demo//conf//config_common.yaml"):
     """
     Load a configuration file using OmegaConf.
 
