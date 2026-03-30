@@ -141,3 +141,32 @@ def plot_training_history(training_history, path):
     plt.tight_layout()
     plt.savefig(path)
     plt.close(fig)
+
+def load_merged_config(common_path="conf/config_common.yaml", local_path=None):
+    common_cfg = get_cfg(common_path)
+    if local_path is None:
+        return dict(common_cfg)
+
+    local_cfg = get_cfg(local_path)
+    return {**common_cfg, **local_cfg}
+
+
+def resolve_client_data_path(cfg, client_id=None, cli_data_path=None):
+    if cli_data_path:
+        return cli_data_path
+
+    client_mode = cfg.get("client_mode", "simulation")
+    base_data_path = cfg.get("data_path")
+
+    if not base_data_path:
+        raise ValueError("Missing 'data_path' in configuration.")
+
+    if client_mode == "simulation":
+        if client_id is None:
+            raise ValueError("client_id is required in simulation mode.")
+        return os.path.join(base_data_path, f"client{client_id}")
+
+    if client_mode == "real":
+        return base_data_path
+
+    raise ValueError(f"Unsupported client_mode: {client_mode}")

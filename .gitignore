@@ -1,15 +1,21 @@
-# Virtual environments
-venv/
-.venv/
-env/
-flower_env/
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 
-# OS files
-.DS_Store
-
-# Data
+# Data & outputs
 data/
+outputs/
+
+# Model files
+*.pth
+
+# Numpy artifacts
+*.npy
+*.npz
+
+# Environments
+venv/
+flower_env/
+
+# OS
+.DS_Store
