@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 from models.modelTR import AnomalyTransformer, test, train, vali
 from utils import get_cfg
 
+from algorithms.registry import get_algorithm
 
 class TransformerClient(fl.client.NumPyClient):
     """Flower client for Transformer-based anomaly detection."""
@@ -17,6 +18,7 @@ class TransformerClient(fl.client.NumPyClient):
 
         self.trainloader = trainloader
         self.testloader = testloader
+        self.valloader = testloader
         self.cfg = cfg
 
         self.win_size = cfg.get("win_size")
@@ -34,6 +36,13 @@ class TransformerClient(fl.client.NumPyClient):
         self.device = torch.device(device_name)
         self.model.to(self.device)
 
+        self.algorithm = cfg.get("algorithm", "fedavg")
+        self.algorithm_impl = get_algorithm(self.algorithm, cfg)
+        self.algorithm_state = self.algorithm_impl.initialize_state()
+
+        self.theta_params = None
+        self.first_round = True
+
     def set_parameters(self, parameters):
         """Receive parameters and apply them to the local model."""
         params_dict = zip(self.model.state_dict().keys(), parameters)
@@ -50,7 +59,11 @@ class TransformerClient(fl.client.NumPyClient):
         ]
 
     def fit(self, parameters, config):
-        algorithm = self.cfg.get("algorithm")
+        algorithm = self.cfg.get("algorithm", "fedavg")
+
+        if algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.fit(self, parameters, config)
+
         self.set_parameters(parameters)
 
         if algorithm == "pfedme":
@@ -95,30 +108,16 @@ class TransformerClient(fl.client.NumPyClient):
                 },
             )
 
-        elif algorithm == "fedavg":
-            train_rec_loss, threshold = train(
-                self.model,
-                self.trainloader,
-                self.testloader,
-                self.k,
-                self.win_size,
-                self.cfg,
-            )
-
-            return (
-                self.get_parameters(None),
-                len(self.trainloader.dataset),
-                {
-                    "train_loss": float(train_rec_loss),
-                    "threshold": float(threshold),
-                },
-            )
-
         else:
             raise ValueError(f"Unsupported algorithm: {algorithm}")
 
     def evaluate(self, parameters, config):
         """Evaluate model and return loss/metrics."""
+        algorithm = self.cfg.get("algorithm", "fedavg")
+
+        if algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.evaluate(self, parameters, config)
+
         global_threshold = config.get("aggregated_threshold", 0.0)
         print(f"Received global threshold from server: {global_threshold}")
 
@@ -143,7 +142,6 @@ class TransformerClient(fl.client.NumPyClient):
                 "f1_score": float(f1_score),
             },
         )
-
 
 if __name__ == "__main__":
     import argparse

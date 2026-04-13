@@ -19,3 +19,15 @@ flower_env/
 
 # OS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Outputs
+outputs/
+
+# Model weights / artifacts
+*.pth
+*.npz
+*.npy

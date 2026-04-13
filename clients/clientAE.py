@@ -6,6 +6,7 @@ import torch
 from models.modelAE import Autoencoder, train, vali
 from utils import get_cfg
 
+from algorithms.registry import get_algorithm
 
 class Autoencoder_Client(fl.client.NumPyClient):
     """Flower client for Autoencoder."""
@@ -28,6 +29,15 @@ class Autoencoder_Client(fl.client.NumPyClient):
 
         self.model.to(self.device)
 
+        # Algorithm handling
+        self.algorithm = cfg.get("algorithm", "fedavg")
+        self.algorithm_impl = get_algorithm(self.algorithm, cfg)
+        self.algorithm_state = self.algorithm_impl.initialize_state()
+
+        # Keep any personalization state needed by pFedMe-like methods
+        self.theta_params = None
+        self.first_round = True
+        
     def set_parameters(self, parameters):
         """Load parameters into the model."""
         params_dict = zip(self.model.state_dict().keys(), parameters)
@@ -42,7 +52,10 @@ class Autoencoder_Client(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         """Train locally."""
-        algorithm = self.cfg.get("algorithm")
+        algorithm = self.cfg.get("algorithm", "fedavg")
+
+        if algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.fit(self, parameters, config)
 
         self.set_parameters(parameters)
 
@@ -73,35 +86,34 @@ class Autoencoder_Client(fl.client.NumPyClient):
                 },
             )
 
-        elif algorithm == "fedavg":
-            train_loss = train(self.model, self.trainloader, self.cfg)
-
-            return (
-                self.get_parameters(None),
-                len(self.trainloader.dataset),
-                {"train_loss": float(train_loss)},
-            )
-
         else:
             raise ValueError(f"Unsupported algorithm: {algorithm}")
 
     def evaluate(self, parameters, config):
         """Evaluate model and compute anomaly threshold."""
+        algorithm = self.cfg.get("algorithm", "fedavg")
+
+        if algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.evaluate(self, parameters, config)
+
         self.set_parameters(parameters)
 
-        avg_loss, threshold = vali(
-            self.model, self.valloader, self.trainloader, self.cfg
-        )
+        if algorithm == "pfedme":
+            avg_loss, threshold = vali(
+                self.model, self.valloader, self.trainloader, self.cfg
+            )
 
-        return (
-            float(avg_loss),
-            len(self.valloader.dataset),
-            {
-                "client_eval_loss": float(avg_loss),
-                "threshold": float(threshold),
-            },
-        )
+            return (
+                float(avg_loss),
+                len(self.valloader.dataset),
+                {
+                    "client_eval_loss": float(avg_loss),
+                    "threshold": float(threshold),
+                },
+            )
 
+        else:
+            raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 if __name__ == "__main__":
     import argparse

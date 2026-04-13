@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 from models.modelCNN import CNN_CIFAR10, CNN_FMNIST, CNN_MNIST, test_CNN, train_CNN
 from utils import get_cfg
 
+from algorithms.registry import get_algorithm
 
 class CNN_Client(fl.client.NumPyClient):
     def __init__(self, trainloader, testloader, cfg) -> None:
@@ -34,6 +35,9 @@ class CNN_Client(fl.client.NumPyClient):
 
         self.algorithm = cfg.get("algorithm")
 
+        self.algorithm_impl = get_algorithm(self.algorithm, cfg)
+        self.algorithm_state = self.algorithm_impl.initialize_state()
+
         # Persistent across rounds
         self.theta_params = None
         self.first_round = True
@@ -49,6 +53,9 @@ class CNN_Client(fl.client.NumPyClient):
         return [val.detach().cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def fit(self, parameters, config):
+        if self.algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.fit(self, parameters, config)
+
         self.set_parameters(parameters)
         global_model_params = [
             p.detach().clone().to(self.device) for p in self.model.parameters()
@@ -64,11 +71,9 @@ class CNN_Client(fl.client.NumPyClient):
                 first_round=self.first_round,
             )
 
-            # Keep compatibility with current model implementation
             if isinstance(train_result, tuple) and len(train_result) == 2:
                 updated_global, train_loss = train_result
                 self.first_round = False
-
                 return (
                     [p.detach().cpu().numpy() for p in updated_global],
                     len(self.trainloader.dataset),
@@ -80,25 +85,11 @@ class CNN_Client(fl.client.NumPyClient):
                 "(updated_global, train_loss)."
             )
 
-        elif self.algorithm in ["fedavg", "fedavg+KD"]:
-            train_loss = train_CNN(
-                self.model,
-                self.trainloader,
-                self.cfg,
-                None,
-                None,
-                True,
-            )
-            return (
-                self.get_parameters(None),
-                len(self.trainloader.dataset),
-                {"train_loss": float(train_loss)},
-            )
+        raise ValueError(f"Unsupported algorithm: {self.algorithm}")
 
-        else:
-            raise ValueError(f"Unsupported algorithm: {self.algorithm}")
-
-    def evaluate(self, parameters: List[np.ndarray], config):
+    def evaluate(self, parameters, config):
+        if self.algorithm in ["fedavg", "fedavg+KD"]:
+            return self.algorithm_impl.evaluate(self, parameters, config)
         if self.theta_params is not None:
             for param, theta in zip(self.model.parameters(), self.theta_params):
                 param.data = theta.data.clone()
@@ -106,7 +97,8 @@ class CNN_Client(fl.client.NumPyClient):
             self.set_parameters(parameters)
 
         test_loss, accuracy, precision, recall, f1_score = test_CNN(
-            self.model, self.testloader
+            self.model,
+            self.testloader,
         )
 
         return (
@@ -120,7 +112,6 @@ class CNN_Client(fl.client.NumPyClient):
                 "f1_score": float(f1_score),
             },
         )
-
 
 if __name__ == "__main__":
     import argparse
