@@ -1,9 +1,11 @@
 from typing import Dict, Any, List
 
+import torch
+
 from algorithms.base import BaseAlgorithm
 from models.modelCNN import test_CNN, train_CNN
 from models.modelAE import train as train_ae, vali as vali_ae
-import torch
+from models.modelTR import train as train_tr, vali as vali_tr, test as test_tr
 
 
 class PFedMeAlgorithm(BaseAlgorithm):
@@ -99,6 +101,48 @@ class PFedMeAlgorithm(BaseAlgorithm):
                 },
             )
 
+        elif "transformer" in model_name:
+            global_params, train_loss = train_tr(
+                client.model,
+                client.trainloader,
+                client.testloader,
+                client.k,
+                client.win_size,
+                client.cfg,
+            )
+
+            loss_personalized = vali_tr(
+                client.model,
+                client.testloader,
+                client.trainloader,
+                client.k,
+                client.win_size,
+                client.cfg,
+            )
+
+            with torch.no_grad():
+                for param, g_param in zip(client.model.parameters(), global_params):
+                    param.data = g_param.data.clone()
+
+            loss_local_global = vali_tr(
+                client.model,
+                client.testloader,
+                client.trainloader,
+                client.k,
+                client.win_size,
+                client.cfg,
+            )
+
+            return (
+                client.get_parameters(None),
+                len(client.trainloader.dataset),
+                {
+                    "train_loss": float(train_loss),
+                    "reconstruction_loss_local_global": float(loss_local_global),
+                    "reconstruction_loss_personalized": float(loss_personalized),
+                },
+            )
+
         raise ValueError(f"pFedMe not implemented for model: {client.cfg.get('model')}")
 
     def evaluate(self, client, parameters: List, config: Dict[str, Any]):
@@ -149,4 +193,30 @@ class PFedMeAlgorithm(BaseAlgorithm):
                 },
             )
 
-        raise ValueError(f"pFedMe not implemented for model: {client.cfg.get('model')}")
+        elif "transformer" in model_name:
+            global_threshold = config.get("aggregated_threshold", 0.0)
+            print(f"Received global threshold from server: {global_threshold}")
+
+            client.set_parameters(parameters)
+
+            test_rec_loss, accuracy, precision, recall, f1_score = test_tr(
+                client.model,
+                client.testloader,
+                global_threshold,
+                client.win_size,
+                client.cfg,
+            )
+
+            return (
+                float(test_rec_loss),
+                len(client.testloader.dataset),
+                {
+                    "test_loss": float(test_rec_loss),
+                    "accuracy": float(accuracy),
+                    "precision": float(precision),
+                    "recall": float(recall),
+                    "f1_score": float(f1_score),
+                },
+            )
+
+        raise ValueError(f"pFedMe not implemented for model: {client.cfg.get('model')}")    

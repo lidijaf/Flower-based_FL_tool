@@ -38,10 +38,8 @@ class TransformerClient(fl.client.NumPyClient):
 
         self.algorithm = cfg.get("algorithm", "fedavg")
         self.algorithm_impl = get_algorithm(self.algorithm, cfg)
+        self.algorithm_impl.validate_config()
         self.algorithm_state = self.algorithm_impl.initialize_state()
-
-        self.theta_params = None
-        self.first_round = True
 
     def set_parameters(self, parameters):
         """Receive parameters and apply them to the local model."""
@@ -61,87 +59,19 @@ class TransformerClient(fl.client.NumPyClient):
     def fit(self, parameters, config):
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
             return self.algorithm_impl.fit(self, parameters, config)
 
-        self.set_parameters(parameters)
-
-        if algorithm == "pfedme":
-            global_params, train_loss = train(
-                self.model,
-                self.trainloader,
-                self.testloader,
-                self.k,
-                self.win_size,
-                self.cfg,
-            )
-
-            loss_personalized = vali(
-                self.model,
-                self.testloader,
-                self.trainloader,
-                self.k,
-                self.win_size,
-                self.cfg,
-            )
-
-            with torch.no_grad():
-                for param, g_param in zip(self.model.parameters(), global_params):
-                    param.data = g_param.data.clone()
-
-            loss_local_global = vali(
-                self.model,
-                self.testloader,
-                self.trainloader,
-                self.k,
-                self.win_size,
-                self.cfg,
-            )
-
-            return (
-                self.get_parameters(None),
-                len(self.trainloader.dataset),
-                {
-                    "train_loss": float(train_loss),
-                    "reconstruction_loss_local_global": float(loss_local_global),
-                    "reconstruction_loss_personalized": float(loss_personalized),
-                },
-            )
-
-        else:
-            raise ValueError(f"Unsupported algorithm: {algorithm}")
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
 
     def evaluate(self, parameters, config):
         """Evaluate model and return loss/metrics."""
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
             return self.algorithm_impl.evaluate(self, parameters, config)
 
-        global_threshold = config.get("aggregated_threshold", 0.0)
-        print(f"Received global threshold from server: {global_threshold}")
-
-        self.set_parameters(parameters)
-
-        test_rec_loss, accuracy, precision, recall, f1_score = test(
-            self.model,
-            self.testloader,
-            global_threshold,
-            self.win_size,
-            self.cfg,
-        )
-
-        return (
-            float(test_rec_loss),
-            len(self.testloader.dataset),
-            {
-                "test_loss": float(test_rec_loss),
-                "accuracy": float(accuracy),
-                "precision": float(precision),
-                "recall": float(recall),
-                "f1_score": float(f1_score),
-            },
-        )
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 if __name__ == "__main__":
     import argparse
