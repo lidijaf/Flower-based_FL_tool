@@ -127,6 +127,190 @@ Each folder represents one simulated client.
 Each client simply points to its local dataset directory.
 
 ---
+## 🧹 Preprocessing and Dataset Preparation
+
+The framework includes a **modular preprocessing and dataset preparation module** under:
+
+```
+data_preprocessing/
+```
+
+This module provides a unified way to:
+- download built-in datasets  
+- preprocess structured and tabular data  
+- generate federated client splits  
+- inject anomalies for anomaly detection  
+- export data in CSV or PyTorch formats  
+
+---
+
+### ⚙️ Main Entry Point
+
+Datasets are prepared using:
+
+```bash
+python use_dataset.py <dataset_name> [options]
+```
+
+---
+
+### 📦 Supported Datasets
+
+| Dataset Type | Name | Description |
+|-------------|------|------------|
+| Built-in | `mnist`, `cifar10`, `fmnist` | Automatically downloaded |
+| Structured | `act` | Event-based JSON data |
+| Tabular (Anomaly) | `metropt` | Industrial anomaly detection dataset |
+| Time-series | `psm` | Pooled Server Metrics dataset |
+| Generic | `tabular` | Any CSV dataset |
+
+---
+
+### ▶️ Examples
+
+#### 📥 Built-in datasets
+
+```bash
+python use_dataset.py mnist
+python use_dataset.py cifar10 --output_dir data/cifar10
+```
+
+---
+
+#### 🧠 ACT dataset (JSON → FL-ready)
+
+```bash
+# Standard preprocessing
+python use_dataset.py act --input_path data/raw/run1.json
+
+# Balanced client partitioning
+python use_dataset.py act \
+    --input_path data/raw/run1.json \
+    --mode balanced \
+    --num_clients 4
+
+# Anomaly injection
+python use_dataset.py act \
+    --input_path data/raw/run1.json \
+    --mode anomaly
+```
+
+---
+
+#### 🏭 MetroPT dataset
+
+```bash
+python use_dataset.py metropt \
+    --input_path data/raw/metro.csv \
+    --num_clients 2 \
+    --output_dir data/metropt
+```
+
+---
+
+#### 📊 PSM dataset
+
+```bash
+python use_dataset.py psm \
+    --input_path "data/Pooled Server Metrics (PSM)" \
+    --num_clients 2 \
+    --output_dir data/psm
+```
+
+Expected structure:
+
+```
+train.csv
+test.csv
+test_label.csv
+```
+
+---
+
+#### 📄 Generic tabular dataset
+
+```bash
+python use_dataset.py tabular \
+    --input_path data/raw/sample.csv \
+    --num_clients 3
+```
+
+---
+
+### 📁 Output Structure
+
+Prepared datasets are exported into client-specific folders:
+
+```
+client1/
+client2/
+client3/
+...
+```
+
+Each client contains:
+
+#### CSV format
+```
+train.csv
+val.csv
+test.csv
+```
+
+#### or PyTorch format
+```
+train.pt
+val.pt
+test.pt
+```
+
+---
+
+### 🧠 Preprocessing Capabilities
+
+The preprocessing module supports:
+
+- JSON flattening (ACT)
+- feature engineering (e.g. temporal features)
+- encoding and normalization
+- flexible client partitioning
+- balanced client creation
+- train / validation / test splitting
+- anomaly injection
+- anomaly-aware data splitting
+- CSV and tensor export
+
+---
+
+### 🔄 Workflow Integration
+
+Dataset preparation is intentionally **decoupled from training**.
+
+Recommended workflow:
+
+1. Prepare dataset:
+```bash
+python use_dataset.py ...
+```
+
+2. Configure experiment:
+```bash
+python configure.py
+```
+
+3. Run training:
+```bash
+python start_server.py
+```
+
+---
+
+### ⚠️ Note on Data Modules
+
+- `data_preprocessing/` → full preprocessing framework  
+- `data_preparations/` → lightweight compatibility layer used by existing clients  
+
+All new preprocessing logic should be added to `data_preprocessing/`.
 
 ## ▶️ Running the System
 
