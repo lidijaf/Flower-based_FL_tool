@@ -19,6 +19,12 @@ This tool supports both **simulation environments** and **real-world distributed
 - 🧠 Supported Tasks  
   - Classification (e.g., MNIST)  
   - Anomaly Detection (Autoencoder, Transformer)  
+  
+  - 🔬 Supported Algorithms  
+  - FedAvg  
+  - pFedMe  
+  - pFedMeNew  
+  - DRFL (prototype, currently CNN-only)  
 
 - 🧩 Modular Design  
   - Plug-and-play models, datasets, and strategies  
@@ -187,17 +193,19 @@ Includes:
 
 ```
 .
+├── algorithms/
 ├── clients/
 ├── servers/
+│   └── strategies/
 ├── models/
 ├── data_preparations/
 ├── conf/
 ├── data/
+├── utils/
 ├── outputs/
 │
 ├── configure.py
 ├── start_server.py
-├── utils.py
 ```
 
 ---
@@ -213,12 +221,29 @@ Includes:
 - Define structure in GUI validation  
 
 ### Add a new algorithm
-- Implement logic in:
-  - `clients/`  
-  - `servers/`  
+- Implement client-side logic in:
+  - `algorithms/`
+- If needed, implement custom server aggregation in:
+  - `servers/strategies/`
+---
 
 ---
 
+## 🧪 Experimental Algorithms
+
+### DRFL (Distributionally Robust Federated Learning)
+
+DRFL is implemented as an experimental client-server pipeline for CNN-based classification tasks.
+
+- Clients transmit serialized gradients to the server  
+- The server clusters clients based on gradient similarity  
+- The cluster with the highest average loss is selected  
+- A normalized robust gradient update is applied to the global model  
+
+With a small number of clients, clustering may isolate individual clients.  
+In such cases, the system falls back to a single shared cluster to ensure stable training.
+
+This implementation is intended for research and experimentation, and is most effective in settings with multiple heterogeneous clients.
 ## 🧑‍💻 Running on a Cluster (SLURM)
 
 Example:

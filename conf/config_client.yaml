@@ -6,9 +6,16 @@ epochs: 1
 momentum: 0.9
 config_fit_pfedme:
   local_rounds: 1
+  local_iterations: 5
   lambda_reg: 0.01
   mu: 0.1
-
+  new: false
+config_fit_pfedme_new:
+  local_rounds: 1
+  local_iterations: 5
+  lambda_reg: 0.01
+  mu: 0.1
+  new: true
 
 # AE-specific params (if needed)
 input_dim: 25

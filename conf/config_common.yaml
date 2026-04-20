@@ -37,11 +37,11 @@
 # Change only this block when switching experiments
 # ============================================================
 
-task: anomaly detection
-dataset: custom dataset
-model: Transformer
-algorithm: fedavg
-
+# 5) CNN + MNIST
+task: classification
+dataset: MNIST
+model: CNN_MNIST
+algorithm: drfl
 
 # ============================================================
 # Dataset / partition settings
@@ -62,8 +62,7 @@ min_data_per_partition: 10
 mean: 0.0
 sigma: 2.0
 device: cpu
-client_mode: real
-node_role: client
-data_path: '/home/lidija/Projects/FlowerFixRepo/Flower-based_FL_tool/data/Pooled Server
-  Metrics (PSM)'
+client_mode: simulation
+node_role: simulation
+data_path: './data/mnist'
 server_address: 127.0.0.1:8080

@@ -51,13 +51,13 @@ class CNN_Client(fl.client.NumPyClient):
         return [val.detach().cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def fit(self, parameters, config):
-        if self.algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if self.algorithm in ["fedavg", "fedavg+KD", "pfedme",  "pfedme_new", "drfl"]:
             return self.algorithm_impl.fit(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {self.algorithm}")
 
     def evaluate(self, parameters, config):
-        if self.algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if self.algorithm in ["fedavg", "fedavg+KD", "pfedme",  "pfedme_new", "drfl"]:
             return self.algorithm_impl.evaluate(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {self.algorithm}")

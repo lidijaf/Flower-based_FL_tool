@@ -8,6 +8,8 @@ import torch
 
 from utils import get_cfg
 
+from servers.strategies.drfl_strategy import DRFLStrategy
+
 
 base_dir = os.path.dirname(__file__)
 results_dir = os.path.join(base_dir, "outputs", "mislabeled_experiments")
@@ -111,16 +113,33 @@ if __name__ == "__main__":
         get_evaluate_config_fn,
     ) = get_server_functions(cfg)
 
-    strategy = fl.server.strategy.FedAvg(
-        fraction_fit=cfg.get("fraction_fit"),
-        min_fit_clients=cfg.get("min_fit_clients"),
-        fraction_evaluate=cfg.get("fraction_evaluate"),
-        min_evaluate_clients=cfg.get("min_evaluate_clients"),
-        min_available_clients=cfg.get("min_available_clients"),
-        fit_metrics_aggregation_fn=get_weighted_average_fit(global_metrics),
-        evaluate_metrics_aggregation_fn=get_weighted_average_eval(global_metrics),
-        on_evaluate_config_fn=get_evaluate_config_fn(global_metrics),
-    )
+
+    fit_metrics_fn = get_weighted_average_fit(global_metrics)
+    eval_metrics_fn = get_weighted_average_eval(global_metrics)
+    eval_config_fn = get_evaluate_config_fn(global_metrics)
+
+    if algorithm == "drfl":
+        strategy = DRFLStrategy(
+            fraction_fit=cfg.get("fraction_fit", 1.0),
+            fraction_evaluate=cfg.get("fraction_evaluate", 1.0),
+            min_fit_clients=cfg.get("min_fit_clients", 2),
+            min_evaluate_clients=cfg.get("min_evaluate_clients", 2),
+            min_available_clients=cfg.get("min_available_clients", 2),
+            fit_metrics_aggregation_fn=fit_metrics_fn,
+            evaluate_metrics_aggregation_fn=eval_metrics_fn,
+            on_evaluate_config_fn=eval_config_fn,
+        )
+    else:
+        strategy = fl.server.strategy.FedAvg(
+            fraction_fit=cfg.get("fraction_fit"),
+            min_fit_clients=cfg.get("min_fit_clients"),
+            fraction_evaluate=cfg.get("fraction_evaluate"),
+            min_evaluate_clients=cfg.get("min_evaluate_clients"),
+            min_available_clients=cfg.get("min_available_clients"),
+            fit_metrics_aggregation_fn=fit_metrics_fn,
+            evaluate_metrics_aggregation_fn=eval_metrics_fn,
+            on_evaluate_config_fn=eval_config_fn,
+        )
 
     fl.server.start_server(
         server_address=os.getenv("SERVER_ADDR", "127.0.0.1:8080"),

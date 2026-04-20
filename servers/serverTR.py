@@ -31,7 +31,7 @@ def get_weighted_average_fit(metrics_dict: Dict):
         if total_examples == 0:
             return {}
 
-        if algorithm == "pfedme":
+        if algorithm in ["pfedme", "pfedme_new"]:
             loss_personal = [
                 num_examples * m.get("reconstruction_loss_personalized", 0.0)
                 for num_examples, m in metrics

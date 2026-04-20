@@ -59,7 +59,7 @@ class TransformerClient(fl.client.NumPyClient):
     def fit(self, parameters, config):
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
             return self.algorithm_impl.fit(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {algorithm}")
@@ -68,7 +68,7 @@ class TransformerClient(fl.client.NumPyClient):
         """Evaluate model and return loss/metrics."""
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
             return self.algorithm_impl.evaluate(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {algorithm}")

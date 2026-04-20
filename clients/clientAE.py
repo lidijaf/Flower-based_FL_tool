@@ -51,7 +51,7 @@ class Autoencoder_Client(fl.client.NumPyClient):
         """Train locally."""
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
             return self.algorithm_impl.fit(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {algorithm}")
@@ -60,7 +60,7 @@ class Autoencoder_Client(fl.client.NumPyClient):
         """Evaluate model and compute anomaly threshold."""
         algorithm = self.cfg.get("algorithm", "fedavg")
 
-        if algorithm in ["fedavg", "fedavg+KD", "pfedme"]:
+        if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
             return self.algorithm_impl.evaluate(self, parameters, config)
 
         raise ValueError(f"Unsupported algorithm: {algorithm}")

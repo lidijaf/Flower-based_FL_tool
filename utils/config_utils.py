@@ -9,13 +9,9 @@ from omegaconf import OmegaConf
 from torch.utils.data import ConcatDataset, Dataset, Subset
 
 
-def get_cfg(config_path=None):
-    base_dir = os.path.dirname(__file__)
-
-    if config_path is None:
-        config_path = os.path.join(base_dir, "conf", "config_common.yaml")
-    elif not os.path.isabs(config_path):
-        config_path = os.path.join(base_dir, config_path)
+def get_cfg(relative_path: str):
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(repo_root, relative_path)
 
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Configuration file not found at {config_path}")
