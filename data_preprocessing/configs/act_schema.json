@@ -1,0 +1,106 @@
+{
+  "input": {
+    "meta_field": "meta",
+    "payload_field": "payload"
+  },
+  "flatten": {
+    "field_map": {
+      "timestampMicros": {
+        "source": "meta",
+        "key": "timestampMicros"
+      },
+      "appId": {
+        "source": "meta",
+        "key": "appId"
+      },
+      "stream": {
+        "source": "meta",
+        "key": "stream"
+      },
+      "tags": {
+        "source": "meta",
+        "key": "tags",
+        "join_list": true
+      },
+      "offset": {
+        "source": "meta",
+        "key": "offset"
+      },
+      "eventId": {
+        "source": "meta",
+        "key": "eventId"
+      },
+      "streamName": {
+        "source": "payload",
+        "key": "streamName"
+      },
+      "streamNr": {
+        "source": "payload",
+        "key": "streamNr"
+      },
+      "payload_keys": {
+        "source": "payload",
+        "special": "keys_join"
+      },
+      "payload_raw": {
+        "source": "payload",
+        "special": "stringify_container"
+      },
+      "type": {
+        "source": "root",
+        "key": "type"
+      }
+    }
+  },
+  "columns": {
+    "timestamp_col": "timestampMicros",
+    "group_col": "stream",
+    "categorical_cols": ["streamName", "tags"],
+    "numeric_cols": ["offset", "delta_t", "payload_len"],
+    "metadata_cols": ["timestampMicros", "stream", "eventId"],
+    "drop_cols": ["payload_raw", "appId", "payload_keys", "type"],
+    "label_col": "is_anomaly"
+  },
+  "features": {
+    "delta_time": {
+      "enabled": true,
+      "timestamp_col": "timestampMicros",
+      "group_by": "stream",
+      "output_col": "delta_t",
+      "scale_factor": 1000000.0,
+      "fillna_value": 0
+    },
+    "string_length": {
+      "enabled": true,
+      "source_col": "payload_raw",
+      "output_col": "payload_len"
+    }
+  },
+  "encoding": {
+    "columns": ["streamName", "tags"],
+    "drop_first": true
+  },
+  "scaling": {
+    "columns": ["offset", "delta_t", "payload_len"],
+    "artifact_name": "act_scaler"
+  },
+  "split": {
+    "train_ratio": 0.7,
+    "val_ratio": 0.15,
+    "test_ratio": 0.15,
+    "sort_by": ["timestampMicros"]
+  },
+  "anomaly": {
+    "anomaly_fraction": 0.05,
+    "numeric_cols": ["offset", "delta_t", "payload_len"],
+    "categorical_cols": ["streamName", "tags"],
+    "temporal_cols": ["delta_t"],
+    "label_col": "is_anomaly",
+    "noise_std": 0.5,
+    "shift_multiplier": 3.0,
+    "random_state": 42,
+    "normal_value": 0,
+    "anomaly_value": 1,
+    "anomaly_distribution": "half_half"
+  }
+}

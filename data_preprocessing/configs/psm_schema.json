@@ -1,0 +1,19 @@
+{
+  "input": {
+    "train_file": "train.csv",
+    "test_file": "test.csv",
+    "test_label_file": "test_label.csv",
+    "drop_first_column": true
+  },
+  "split": {
+    "val_ratio": 0.2,
+    "random_seed": 42
+  },
+  "partition": {
+    "num_clients": 1,
+    "strategy": "equal_array_split"
+  },
+  "scaling": {
+    "enabled": true
+  }
+}

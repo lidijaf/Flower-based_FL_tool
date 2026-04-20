@@ -1,0 +1,23 @@
+{
+  "input": {
+    "format": "csv"
+  },
+  "columns": {
+    "label_mode": "first_column",
+    "label_col_name": "label",
+    "normal_value": 0,
+    "anomaly_value": 1
+  },
+  "split": {
+    "val_ratio": 0.2,
+    "test_ratio": 0.2,
+    "random_seed": 42
+  },
+  "partition": {
+    "num_clients": 2,
+    "strategy": "equal_array_split"
+  },
+  "export": {
+    "format": "pt"
+  }
+}
