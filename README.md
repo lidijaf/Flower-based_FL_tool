@@ -179,6 +179,16 @@ python use_dataset.py cifar10 --output_dir data/cifar10
 
 #### 🧠 ACT dataset (JSON → FL-ready)
 
+The framework contains a reusable preprocessing recipe developed for the ACT use case within the TaRDIS project.
+
+To protect project-specific data structures and metadata, ACT schemas and sample datasets are not distributed with the public repository.
+
+Users who wish to use this recipe must provide:
+--an input JSON dataset
+--a dataset-specific schema/configuration file describing the structure of the JSON data
+
+Example:
+
 ```bash
 # Standard preprocessing
 python use_dataset.py act --input_path data/raw/run1.json
@@ -194,6 +204,8 @@ python use_dataset.py act \
     --input_path data/raw/run1.json \
     --mode anomaly
 ```
+
+The ACT recipe demonstrates how the preprocessing framework can be applied to schema-driven JSON event streams while keeping dataset-specific details outside the public repository.
 
 ---
 

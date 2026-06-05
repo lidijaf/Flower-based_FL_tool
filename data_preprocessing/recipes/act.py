@@ -20,6 +20,21 @@ DEFAULT_ACT_SCHEMA_PATH = "data_preprocessing/configs/act_schema.json"
 
 
 def load_act_schema(config_path=DEFAULT_ACT_SCHEMA_PATH):
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(
+            f"""
+ACT schema file not found:
+
+{config_path}
+
+The ACT recipe requires a dataset-specific schema file which is not
+distributed with the public repository.
+
+Please provide your own schema file and pass its path through the
+configuration or API.
+"""
+        )
+
     return load_json_config(config_path)
 
 
