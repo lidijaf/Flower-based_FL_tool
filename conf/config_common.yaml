@@ -38,10 +38,17 @@
 # ============================================================
 
 # 5) CNN + MNIST
-task: classification
-dataset: MNIST
-model: CNN_MNIST
-algorithm: drfl
+#task: classification
+#dataset: MNIST
+#model: CNN_MNIST
+#algorithm: fedavg
+
+# 1) Transformer + PSM
+task: anomaly detection
+dataset: metro
+model: Transformer
+algorithm: fedavg
+
 
 # ============================================================
 # Dataset / partition settings
@@ -49,11 +56,11 @@ algorithm: drfl
 
 iid_partition: true
 
-input_c: 25
-output_c: 25
-win_size: 100
+input_c: 14
+output_c: 14
+win_size: 20
 k: 3
-step: 100
+step: 5
 seed: 42
 val_ratio: 0.2
 num_workers: 0
@@ -64,5 +71,5 @@ sigma: 2.0
 device: cpu
 client_mode: simulation
 node_role: simulation
-data_path: './data/mnist'
+data_path: './data/metropt_transformer'
 server_address: 127.0.0.1:8080

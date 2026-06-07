@@ -9,34 +9,33 @@ from utils import load_merged_config, resolve_client_data_path
 def build_client(cfg):
     task = cfg.get("task")
     model = cfg.get("model")
-    dataset = cfg.get("dataset")
 
     if task == "classification":
-        from data_preparations.datasetCNN import load_data
+        from data_loading.tensor_loader import load_tensor_splits as load_data
         from clients.clientCNN import CNN_Client
 
         trainloader, testloader = load_data(cfg)
         return CNN_Client(trainloader, testloader, cfg)
 
     if task == "anomaly detection":
-        from data_preparations.datasetTR import load_data
 
         if model == "Autoencoder":
+            from data_loading.tensor_loader import load_tensor_splits as load_data
             from clients.clientAE import Autoencoder_Client
 
-            trainloader, testloader = load_data(cfg, mislabel_percent=0.0)
+            trainloader, testloader = load_data(cfg)
             return Autoencoder_Client(trainloader, testloader, cfg)
 
         if model == "Transformer":
+            from data_loading.tensor_loader import load_tensor_splits as load_data
             from clients.clientTR import TransformerClient
 
-            trainloader, testloader = load_data(cfg, mislabel_percent=0.0)
+            trainloader, testloader = load_data(cfg)
             return TransformerClient(trainloader, testloader, cfg)
 
         raise ValueError(f"Unsupported anomaly detection model: {model}")
 
     raise ValueError(f"Unsupported task: {task}")
-
 
 def main():
     parser = argparse.ArgumentParser()

@@ -184,8 +184,8 @@ The framework contains a reusable preprocessing recipe developed for the ACT use
 To protect project-specific data structures and metadata, ACT schemas and sample datasets are not distributed with the public repository.
 
 Users who wish to use this recipe must provide:
---an input JSON dataset
---a dataset-specific schema/configuration file describing the structure of the JSON data
+-an input JSON dataset
+-a dataset-specific schema/configuration file describing the structure of the JSON data
 
 Example:
 
@@ -320,9 +320,55 @@ python start_server.py
 ### ⚠️ Note on Data Modules
 
 - `data_preprocessing/` → full preprocessing framework  
-- `data_preparations/` → lightweight compatibility layer used by existing clients  
+All preprocessing, dataset preparation, tensor export, and window generation logic is implemented in `data_preprocessing/`.
 
-All new preprocessing logic should be added to `data_preprocessing/`.
+
+## 🪟 Transformer Dataset Preparation
+
+Transformer-based anomaly detection models expect windowed tensors with shape:
+
+```text
+[num_windows, win_size, num_features]
+```
+
+Autoencoder models use flat tensors:
+
+```text
+[num_samples, num_features]
+```
+
+To create Transformer-ready datasets from prepared client folders:
+
+```bash
+python3 -m data_preprocessing.scripts.prepare_windowed_dataset     --input_dir data/metropt     --output_dir data/metropt_transformer     --win_size 20     --step 5     --label_mode sequence
+```
+
+For MetroPT Transformer experiments:
+
+```yaml
+task: anomaly detection
+dataset: metropt
+model: Transformer
+algorithm: fedavg
+input_c: 14
+output_c: 14
+win_size: 20
+step: 5
+data_path: './data/metropt_transformer'
+```
+
+For MetroPT Autoencoder experiments:
+
+```yaml
+task: anomaly detection
+dataset: metropt
+model: Autoencoder
+algorithm: fedavg
+data_path: './data/metropt'
+```
+
+`label_mode: sequence` preserves one label per timestep inside each generated window and is required by the current Transformer evaluation pipeline.
+
 
 ## ▶️ Running the System
 
@@ -394,7 +440,7 @@ Includes:
 ├── servers/
 │   └── strategies/
 ├── models/
-├── data_preparations/
+├── data_preprocessing/
 ├── conf/
 ├── data/
 ├── utils/
@@ -413,7 +459,7 @@ Includes:
 - Register it in GUI  
 
 ### Add a new dataset
-- Add loader in `data_preparations/`  
+- Add preprocessing/export logic in `data_preprocessing/`  
 - Define structure in GUI validation  
 
 ### Add a new algorithm

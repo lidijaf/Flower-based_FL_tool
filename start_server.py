@@ -10,6 +10,10 @@ from utils import get_cfg
 
 from servers.strategies.drfl_strategy import DRFLStrategy
 
+from monitoring.timing import Timer
+from monitoring.memory import MemoryTracker
+from monitoring.logger import append_jsonl
+
 
 base_dir = os.path.dirname(__file__)
 results_dir = os.path.join(base_dir, "outputs", "mislabeled_experiments")
@@ -141,12 +145,33 @@ if __name__ == "__main__":
             on_evaluate_config_fn=eval_config_fn,
         )
 
-    fl.server.start_server(
-        server_address=os.getenv("SERVER_ADDR", "127.0.0.1:8080"),
-        config=fl.server.ServerConfig(num_rounds=cfg.get("num_rounds", 10)),
-        strategy=strategy,
-    )
+    server_log_path = os.path.join(base_dir, "outputs", "monitoring", "server_metrics.jsonl")
 
+    server_memory = MemoryTracker("server_training_memory")
+    server_memory.start()
+
+    with Timer("server_training") as server_timer:
+        fl.server.start_server(
+            server_address=os.getenv("SERVER_ADDR", "127.0.0.1:8080"),
+            config=fl.server.ServerConfig(num_rounds=cfg.get("num_rounds", 10)),
+            strategy=strategy,
+        )
+
+    server_memory_metrics = server_memory.stop()
+
+    append_jsonl(
+        {
+            "event": "server_training",
+            "training_time_sec": server_timer.elapsed,
+            "num_rounds": cfg.get("num_rounds", 10),
+            "algorithm": algorithm,
+            "task": cfg.get("task"),
+            "dataset": cfg.get("dataset"),
+            "model": cfg.get("model"),
+            **server_memory_metrics,
+        },
+        server_log_path,
+    )
     save_and_plot(global_metrics, 0)
 
     del global_metrics

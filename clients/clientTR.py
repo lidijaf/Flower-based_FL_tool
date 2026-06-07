@@ -10,6 +10,59 @@ from utils import get_cfg
 
 from algorithms.registry import get_algorithm
 
+from monitoring.timing import Timer
+from monitoring.logger import log_client_metric
+from monitoring.communication import communication_summary
+from monitoring.memory import MemoryTracker
+import numpy as np
+
+def make_json_safe(value):
+    if isinstance(value, torch.Tensor):
+        return value.detach().cpu().item() if value.numel() == 1 else value.detach().cpu().tolist()
+
+    if isinstance(value, np.ndarray):
+        return value.item() if value.size == 1 else value.tolist()
+
+    if isinstance(value, (list, tuple)):
+        return [make_json_safe(v) for v in value]
+
+    if isinstance(value, (int, float, str, bool)) or value is None:
+        return value
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def make_scalar_loss(value):
+    flat_values = []
+
+    def collect(v):
+        if isinstance(v, torch.Tensor):
+            v = v.detach().cpu().numpy()
+
+        if isinstance(v, np.ndarray):
+            flat_values.extend(np.asarray(v, dtype=float).ravel().tolist())
+            return
+
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                collect(item)
+            return
+
+        try:
+            flat_values.append(float(v))
+        except (TypeError, ValueError):
+            pass
+
+    collect(value)
+
+    if not flat_values:
+        return 0.0
+
+    return float(np.mean(flat_values))
+
 class TransformerClient(fl.client.NumPyClient):
     """Flower client for Transformer-based anomaly detection."""
 
@@ -60,23 +113,89 @@ class TransformerClient(fl.client.NumPyClient):
         algorithm = self.cfg.get("algorithm", "fedavg")
 
         if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
-            return self.algorithm_impl.fit(self, parameters, config)
+            memory_tracker = MemoryTracker("client_fit_memory")
+            memory_tracker.start()
+
+            with Timer("client_fit") as timer:
+                result = self.algorithm_impl.fit(self, parameters, config)
+
+            memory_metrics = memory_tracker.stop()
+
+            updated_parameters, num_examples, metrics = result
+            communication_metrics = communication_summary(parameters=updated_parameters)
+
+            if metrics is None:
+                metrics = {}
+
+            metrics["fit_time_sec"] = timer.elapsed
+            metrics.update(memory_metrics)
+            metrics.update(
+                {
+                    "communication_num_parameters": communication_metrics["num_parameters"],
+                    "communication_total_bytes": communication_metrics["total_bytes"],
+                    "communication_total_mb": communication_metrics["total_mb"],
+                }
+            )
+
+            log_client_metric(
+                self.cfg,
+                {
+                    "event": "fit",
+                    "fit_time_sec": timer.elapsed,
+                    "num_examples": num_examples,
+                    "algorithm": algorithm,
+                    **memory_metrics,
+                    "communication_num_parameters": communication_metrics["num_parameters"],
+                    "communication_total_bytes": communication_metrics["total_bytes"],
+                    "communication_total_mb": communication_metrics["total_mb"],
+                },
+            )
+
+            return updated_parameters, num_examples, metrics
 
         raise ValueError(f"Unsupported algorithm: {algorithm}")
-
+    
     def evaluate(self, parameters, config):
         """Evaluate model and return loss/metrics."""
         algorithm = self.cfg.get("algorithm", "fedavg")
 
         if algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new"]:
-            return self.algorithm_impl.evaluate(self, parameters, config)
+            memory_tracker = MemoryTracker("client_evaluate_memory")
+            memory_tracker.start()
 
-        raise ValueError(f"Unsupported algorithm: {algorithm}")
+            with Timer("client_evaluate") as timer:
+                result = self.algorithm_impl.evaluate(self, parameters, config)
 
+            memory_metrics = memory_tracker.stop()
+
+            loss, num_examples, metrics = result
+            scalar_loss = make_scalar_loss(loss)
+
+            if metrics is None:
+                metrics = {}
+
+            metrics["evaluate_time_sec"] = timer.elapsed
+            metrics.update(memory_metrics)
+
+            log_client_metric(
+                self.cfg,
+                {
+                    "event": "evaluate",
+                    "evaluate_time_sec": timer.elapsed,
+                    "num_examples": num_examples,
+                    "loss": make_json_safe(loss),
+                    "algorithm": algorithm,
+                    **memory_metrics,
+                },
+            )
+
+            return scalar_loss, num_examples, metrics
+
+        raise ValueError(f"Unsupported algorithm: {algorithm}")    
 if __name__ == "__main__":
     import argparse
 
-    from data_preparations.datasetTR import load_data
+    from data_loading.tensor_loader import load_tensor_splits as load_data
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--client_id", type=int, required=True)
@@ -94,7 +213,7 @@ if __name__ == "__main__":
     cfg["client_id"] = args.client_id
     cfg["data_path"] = args.data_path
 
-    trainloader, testloader = load_data(cfg, mislabel_percent=0.0)
+    trainloader, testloader = load_data(cfg)
     client = TransformerClient(trainloader, testloader, cfg)
 
     fl.client.start_numpy_client(
