@@ -982,6 +982,7 @@ The framework is designed as a deployment-oriented federated learning platform f
   - support for multiple federated learning algorithms
 
 The framework can serve as a foundation for practical federated learning deployments and can be extended with organization-specific security, orchestration, and operational requirements when needed.
+
 ---
 
 ## ⚠️ Important Notes
