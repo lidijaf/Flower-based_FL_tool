@@ -16,6 +16,8 @@ from monitoring.logger import log_client_metric
 from monitoring.memory import MemoryTracker
 from monitoring.communication import communication_summary
 
+from utils.parameter_codec import encode_parameters_for_transmission
+
 
 def make_json_safe(value):
     if isinstance(value, torch.Tensor):
@@ -93,14 +95,22 @@ class CNN_Client(fl.client.NumPyClient):
 
     def set_parameters(self, parameters):
         params_dict = zip(self.model.state_dict().keys(), parameters)
+        current_state = self.model.state_dict()
         state_dict = OrderedDict(
-            {k: torch.tensor(v).to(self.device) for k, v in params_dict}
+            {
+                k: torch.tensor(v, dtype=current_state[k].dtype).to(self.device)
+                for k, v in params_dict
+            }
         )
         self.model.load_state_dict(state_dict, strict=True)
 
     def get_parameters(self, config):
-        return [val.detach().cpu().numpy() for _, val in self.model.state_dict().items()]
-
+        parameters = [
+            val.detach().cpu().numpy()
+            for _, val in self.model.state_dict().items()
+        ]
+        return encode_parameters_for_transmission(parameters, self.cfg)
+    
     def fit(self, parameters, config):
         if self.algorithm in ["fedavg", "fedavg+KD", "pfedme", "pfedme_new", "drfl"]:
             memory_tracker = MemoryTracker("client_fit_memory")

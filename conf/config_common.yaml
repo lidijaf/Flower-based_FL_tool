@@ -1,66 +1,23 @@
-# ============================================================
-# Supported configuration combinations
-# ============================================================
-#
-# 1) Transformer + PSM
-# task: anomaly detection
-# dataset: psm
-# model: Transformer
-# algorithm: fedavg
-#
-# 2) Transformer + Metro
-# task: anomaly detection
-# dataset: metro
-# model: Transformer
-# algorithm: fedavg
-#
-# 3) Autoencoder + PSM
-# task: anomaly detection
-# dataset: psm
-# model: Autoencoder
-# algorithm: fedavg
-#
-# 4) Autoencoder + Metro
-# task: anomaly detection
-# dataset: metro
-# model: Autoencoder
-# algorithm: fedavg
-#
-# 5) CNN + MNIST
-# task: classification
-# dataset: mnist
-# model: CNN_MNIST
-# algorithm: fedavg
-#
-# ============================================================
-# Active configuration
-# Change only this block when switching experiments
-# ============================================================
-
-# 5) CNN + MNIST
-#task: classification
-#dataset: MNIST
-#model: CNN_MNIST
-#algorithm: fedavg
-
-# 1) Transformer + PSM
-task: anomaly detection
-dataset: metro
-model: Transformer
+client_mode: simulation
+node_role: simulation
+task: classification
+dataset: mnist
+model: CNN_MNIST
 algorithm: fedavg
-
-
-# ============================================================
-# Dataset / partition settings
-# ============================================================
-
+device: cpu
+data_path: ./data/mnist
 iid_partition: true
-
-input_c: 14
-output_c: 14
-win_size: 20
+server_address: 127.0.0.1:8080
+warm_start: true
+warm_start_model_path: outputs/models/final_global_model.pt
+save_global_model: true
+global_model_output_path: outputs/models/final_global_model.pt
+transmission_precision: fp32
+input_c: 25
+output_c: 25
+win_size: 100
 k: 3
-step: 5
+step: 100
 seed: 42
 val_ratio: 0.2
 num_workers: 0
@@ -68,8 +25,5 @@ num_labels_per_partition: 5
 min_data_per_partition: 10
 mean: 0.0
 sigma: 2.0
-device: cpu
-client_mode: simulation
-node_role: simulation
-data_path: './data/metropt_transformer'
-server_address: 127.0.0.1:8080
+kd_temperature: 2.0
+kd_alpha: 0.5

@@ -25,9 +25,9 @@ SUPPORTED_COMBINATIONS = {
 }
 
 ALGORITHMS_BY_MODEL = {
-    "CNN_MNIST": ["fedavg"],
-    "Transformer": ["fedavg", "pfedme"],
-    "Autoencoder": ["fedavg", "pfedme"],
+    "CNN_MNIST": ["fedavg", "fedavg+KD", "drfl"],
+    "Transformer": ["fedavg", "pfedme", "pfedme_new"],
+    "Autoencoder": ["fedavg", "pfedme", "pfedme_new"],
 }
 
 DEFAULTS_COMMON = {
@@ -53,6 +53,13 @@ DEFAULTS_COMMON = {
     "client_mode": "simulation",
     "node_role": "simulation",
     "server_address": "127.0.0.1:8080",
+    "warm_start": False,
+    "warm_start_model_path": "outputs/models/final_global_model.pt",
+    "save_global_model": True,
+    "global_model_output_path": "outputs/models/final_global_model.pt",
+    "kd_temperature": 2.0,
+    "kd_alpha": 0.5,
+    "transmission_precision": "fp32",
 }
 
 DEFAULTS_SERVER = {
@@ -61,11 +68,17 @@ DEFAULTS_SERVER = {
     "min_available_clients": 2,
     "min_fit_clients": 2,
     "min_evaluate_clients": 2,
+    "fraction_fit": 1.0,
+    "fraction_evaluate": 1.0,
+    "learning_rate": 0.0001,
+    "momentum": 0.9,
 }
 
 DEFAULTS_CLIENT = {
     "epochs": 1,
     "batch_size": 32,
+    "learning_rate": 0.001,
+    "momentum": 0.9,
 }
 
 INT_FIELDS_SERVER = {
@@ -85,6 +98,20 @@ FLOAT_FIELDS_COMMON = {
     "val_ratio",
     "mean",
     "sigma",
+    "kd_temperature",
+    "kd_alpha",
+}
+
+FLOAT_FIELDS_SERVER = {
+    "fraction_fit",
+    "fraction_evaluate",
+    "learning_rate",
+    "momentum",
+}
+
+FLOAT_FIELDS_CLIENT = {
+    "learning_rate",
+    "momentum",
 }
 
 INT_FIELDS_COMMON = {
@@ -101,6 +128,8 @@ INT_FIELDS_COMMON = {
 
 BOOL_FIELDS_COMMON = {
     "iid_partition",
+    "warm_start",
+    "save_global_model",
 }
 
 DEFAULT_DATA_PATHS = {
@@ -127,7 +156,7 @@ def update_yaml(filepath: str, updates: dict) -> None:
 def cast_value(key: str, value: str):
     if key in INT_FIELDS_SERVER or key in INT_FIELDS_CLIENT or key in INT_FIELDS_COMMON:
         return int(value)
-    if key in FLOAT_FIELDS_COMMON:
+    if key in FLOAT_FIELDS_COMMON or key in FLOAT_FIELDS_SERVER or key in FLOAT_FIELDS_CLIENT:
         return float(value)
     if key in BOOL_FIELDS_COMMON:
         return value.lower() in {"true", "1", "yes", "y"}
@@ -168,6 +197,21 @@ def validate_config(cfg: dict) -> tuple[bool, str]:
 
     if not cfg.get("device"):
         return False, "Device must be set."
+
+    if cfg.get("transmission_precision") not in {"fp32", "fp16"}:
+        return False, "transmission_precision must be either fp32 or fp16."
+
+    if cfg.get("warm_start") and not (cfg.get("warm_start_model_path") or "").strip():
+        return False, "Warm start requires warm_start_model_path."
+
+    if cfg.get("save_global_model") and not (cfg.get("global_model_output_path") or "").strip():
+        return False, "Saving the global model requires global_model_output_path."
+
+    if algorithm == "fedavg+KD" and model != "CNN_MNIST":
+        return False, "FedAvg+KD is currently supported for CNN_MNIST classification only."
+
+    if algorithm == "drfl" and model != "CNN_MNIST":
+        return False, "DRFL is currently supported for CNN_MNIST classification only."
 
     if client_mode == "real" and node_role == "client":
         if not server_address:
@@ -231,6 +275,11 @@ class FLConfigGUI:
         self.server_address_var = tk.StringVar(value=self.common_cfg.get("server_address", "127.0.0.1:8080"))
 
         self.iid_var = tk.BooleanVar(value=bool(self.common_cfg.get("iid_partition", True)))
+        self.warm_start_var = tk.BooleanVar(value=bool(self.common_cfg.get("warm_start", False)))
+        self.save_global_model_var = tk.BooleanVar(value=bool(self.common_cfg.get("save_global_model", True)))
+        self.warm_start_model_path_var = tk.StringVar(value=self.common_cfg.get("warm_start_model_path", "outputs/models/final_global_model.pt"))
+        self.global_model_output_path_var = tk.StringVar(value=self.common_cfg.get("global_model_output_path", "outputs/models/final_global_model.pt"))
+        self.transmission_precision_var = tk.StringVar(value=self.common_cfg.get("transmission_precision", "fp32"))
 
         self.status_var = tk.StringVar(value="Choose settings to begin.")
         self.summary_var = tk.StringVar(value="")
@@ -287,6 +336,7 @@ class FLConfigGUI:
         self._build_mode_section(left)
         self._build_experiment_section(left)
         self._build_common_section(left)
+        self._build_lifecycle_section(left)
         self._build_training_section(left)
         self._build_summary_section(right)
         self._build_action_section(right)
@@ -423,6 +473,8 @@ class FLConfigGUI:
             ("min_data_per_partition", self.common_cfg.get("min_data_per_partition")),
             ("mean", self.common_cfg.get("mean")),
             ("sigma", self.common_cfg.get("sigma")),
+            ("kd_temperature", self.common_cfg.get("kd_temperature")),
+            ("kd_alpha", self.common_cfg.get("kd_alpha")),
         ]
 
         for idx, (key, value) in enumerate(fields):
@@ -446,6 +498,106 @@ class FLConfigGUI:
         for c in range(4):
             self.common_frame.columnconfigure(c, weight=1)
 
+
+    def _build_lifecycle_section(self, parent):
+        self.lifecycle_frame = ttk.LabelFrame(
+            parent,
+            text="Model Lifecycle / Communication",
+            style="Section.TLabelframe",
+            padding=12,
+        )
+        self.lifecycle_frame.pack(fill="x", pady=(0, 10))
+
+        for c in range(3):
+            self.lifecycle_frame.columnconfigure(c, weight=1)
+
+        ttk.Checkbutton(
+            self.lifecycle_frame,
+            text="Warm start from saved model",
+            variable=self.warm_start_var,
+            command=self._refresh_summary,
+        ).grid(row=0, column=0, sticky="w", pady=4)
+
+        ttk.Label(self.lifecycle_frame, text="Warm-start model path").grid(
+            row=1, column=0, sticky="w", pady=(8, 4)
+        )
+        warm_path_frame = ttk.Frame(self.lifecycle_frame)
+        warm_path_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=4)
+        warm_path_frame.columnconfigure(0, weight=1)
+
+        self.warm_start_model_path_entry = ttk.Entry(
+            warm_path_frame,
+            textvariable=self.warm_start_model_path_var,
+        )
+        self.warm_start_model_path_entry.grid(row=0, column=0, sticky="ew")
+        self.warm_start_model_path_entry.bind("<KeyRelease>", lambda e: self._refresh_summary())
+
+        ttk.Button(
+            warm_path_frame,
+            text="Browse...",
+            command=self._browse_warm_start_model_path,
+        ).grid(row=0, column=1, padx=(6, 0))
+
+        ttk.Checkbutton(
+            self.lifecycle_frame,
+            text="Save final global model",
+            variable=self.save_global_model_var,
+            command=self._refresh_summary,
+        ).grid(row=3, column=0, sticky="w", pady=(12, 4))
+
+        ttk.Label(self.lifecycle_frame, text="Global model output path").grid(
+            row=4, column=0, sticky="w", pady=(8, 4)
+        )
+        save_path_frame = ttk.Frame(self.lifecycle_frame)
+        save_path_frame.grid(row=5, column=0, columnspan=3, sticky="ew", pady=4)
+        save_path_frame.columnconfigure(0, weight=1)
+
+        self.global_model_output_path_entry = ttk.Entry(
+            save_path_frame,
+            textvariable=self.global_model_output_path_var,
+        )
+        self.global_model_output_path_entry.grid(row=0, column=0, sticky="ew")
+        self.global_model_output_path_entry.bind("<KeyRelease>", lambda e: self._refresh_summary())
+
+        ttk.Button(
+            save_path_frame,
+            text="Browse...",
+            command=self._browse_global_model_output_path,
+        ).grid(row=0, column=1, padx=(6, 0))
+
+        ttk.Label(self.lifecycle_frame, text="Transmission precision").grid(
+            row=6, column=0, sticky="w", pady=(12, 4)
+        )
+        precision_combo = ttk.Combobox(
+            self.lifecycle_frame,
+            textvariable=self.transmission_precision_var,
+            state="readonly",
+            values=["fp32", "fp16"],
+        )
+        precision_combo.grid(row=7, column=0, sticky="ew", pady=4)
+        precision_combo.bind("<<ComboboxSelected>>", lambda e: self._refresh_summary())
+
+    def _browse_warm_start_model_path(self):
+        selected = filedialog.askopenfilename(
+            title="Select warm-start model checkpoint",
+            initialdir=base_dir,
+            filetypes=[("PyTorch checkpoint", "*.pt *.pth"), ("All files", "*.*")],
+        )
+        if selected:
+            self.warm_start_model_path_var.set(selected)
+            self._refresh_summary()
+
+    def _browse_global_model_output_path(self):
+        selected = filedialog.asksaveasfilename(
+            title="Select global model output path",
+            initialdir=base_dir,
+            defaultextension=".pt",
+            filetypes=[("PyTorch checkpoint", "*.pt"), ("All files", "*.*")],
+        )
+        if selected:
+            self.global_model_output_path_var.set(selected)
+            self._refresh_summary()
+
     def _build_training_section(self, parent):
         self.training_frame = ttk.LabelFrame(parent, text="Server / Client Settings", style="Section.TLabelframe", padding=12)
         self.training_frame.pack(fill="x", pady=(0, 10))
@@ -456,11 +608,17 @@ class FLConfigGUI:
             ("min_available_clients", self.server_cfg.get("min_available_clients")),
             ("min_fit_clients", self.server_cfg.get("min_fit_clients")),
             ("min_evaluate_clients", self.server_cfg.get("min_evaluate_clients")),
+            ("fraction_fit", self.server_cfg.get("fraction_fit")),
+            ("fraction_evaluate", self.server_cfg.get("fraction_evaluate")),
+            ("learning_rate", self.server_cfg.get("learning_rate")),
+            ("momentum", self.server_cfg.get("momentum")),
         ]
 
         client_fields = [
             ("epochs", self.client_cfg.get("epochs")),
             ("batch_size", self.client_cfg.get("batch_size")),
+            ("learning_rate", self.client_cfg.get("learning_rate")),
+            ("momentum", self.client_cfg.get("momentum")),
         ]
 
         self.server_title = ttk.Label(self.training_frame, text="Server", font=("TkDefaultFont", 10, "bold"))
@@ -668,6 +826,11 @@ class FLConfigGUI:
             "data_path": self.data_path_var.get().strip(),
             "iid_partition": bool(self.iid_var.get()),
             "server_address": self.server_address_var.get().strip(),
+            "warm_start": bool(self.warm_start_var.get()),
+            "warm_start_model_path": self.warm_start_model_path_var.get().strip(),
+            "save_global_model": bool(self.save_global_model_var.get()),
+            "global_model_output_path": self.global_model_output_path_var.get().strip(),
+            "transmission_precision": self.transmission_precision_var.get().strip(),
         }
 
         for key, entry in self.common_entries.items():
@@ -711,6 +874,9 @@ class FLConfigGUI:
             f"Device: {self.device_var.get()}",
             f"Server address: {self.server_address_var.get() or '(not set)'}",
             f"Data path: {self.data_path_var.get() or '(not set)'}",
+            f"Transmission precision: {self.transmission_precision_var.get()}",
+            f"Warm start: {self.warm_start_var.get()}",
+            f"Save global model: {self.save_global_model_var.get()}",
             "",
             "Files:",
             f"- common: {config_common}",

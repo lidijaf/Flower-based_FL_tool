@@ -14,6 +14,13 @@ from monitoring.timing import Timer
 from monitoring.memory import MemoryTracker
 from monitoring.logger import append_jsonl
 
+from utils.model_parameters import (
+    get_initial_parameters_from_cfg,
+    save_model_state_from_parameters,
+)
+
+from servers.strategies.tracking_fedavg import TrackingFedAvg
+
 
 base_dir = os.path.dirname(__file__)
 results_dir = os.path.join(base_dir, "outputs", "mislabeled_experiments")
@@ -122,6 +129,10 @@ if __name__ == "__main__":
     eval_metrics_fn = get_weighted_average_eval(global_metrics)
     eval_config_fn = get_evaluate_config_fn(global_metrics)
 
+    initial_parameters = get_initial_parameters_from_cfg(cfg)
+
+    server_log_path = os.path.join(base_dir, "outputs", "monitoring", "server_metrics.jsonl")
+
     if algorithm == "drfl":
         strategy = DRFLStrategy(
             fraction_fit=cfg.get("fraction_fit", 1.0),
@@ -132,9 +143,10 @@ if __name__ == "__main__":
             fit_metrics_aggregation_fn=fit_metrics_fn,
             evaluate_metrics_aggregation_fn=eval_metrics_fn,
             on_evaluate_config_fn=eval_config_fn,
+            initial_parameters=initial_parameters,
         )
     else:
-        strategy = fl.server.strategy.FedAvg(
+        strategy = TrackingFedAvg(
             fraction_fit=cfg.get("fraction_fit"),
             min_fit_clients=cfg.get("min_fit_clients"),
             fraction_evaluate=cfg.get("fraction_evaluate"),
@@ -143,9 +155,10 @@ if __name__ == "__main__":
             fit_metrics_aggregation_fn=fit_metrics_fn,
             evaluate_metrics_aggregation_fn=eval_metrics_fn,
             on_evaluate_config_fn=eval_config_fn,
+            initial_parameters=initial_parameters,
+            monitoring_log_path=server_log_path,
         )
 
-    server_log_path = os.path.join(base_dir, "outputs", "monitoring", "server_metrics.jsonl")
 
     server_memory = MemoryTracker("server_training_memory")
     server_memory.start()
@@ -156,6 +169,19 @@ if __name__ == "__main__":
             config=fl.server.ServerConfig(num_rounds=cfg.get("num_rounds", 10)),
             strategy=strategy,
         )
+
+        if cfg.get("save_global_model", False):
+            save_path = cfg.get("global_model_output_path", "outputs/models/final_global_model.pt")
+
+            if hasattr(strategy, "latest_parameters") and strategy.latest_parameters is not None:
+                saved_path = save_model_state_from_parameters(
+                    cfg=cfg,
+                    parameters=strategy.latest_parameters,
+                    output_path=save_path,
+                )
+                print(f"Saved final global model to: {saved_path}")
+            else:
+                print("Global model saving requested, but no final parameters were available.")
 
     server_memory_metrics = server_memory.stop()
 

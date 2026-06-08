@@ -128,6 +128,8 @@ def get_weighted_average_fit(metrics_dict: Dict):
         }
 
         metrics_dict.setdefault("train_loss", []).append(result["train_loss"])
+
+        
         return result
 
     return weighted_average_fit

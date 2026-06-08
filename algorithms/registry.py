@@ -1,7 +1,6 @@
 from algorithms.fedavg import FedAvgAlgorithm
+from algorithms.fedavg_kd import FedAvgKDAlgorithm
 from algorithms.pfedme import PFedMeAlgorithm
-from algorithms.pfedme_new import PFedMeNewAlgorithm
-from algorithms.drfl import DRFLAlgorithm
 from algorithms.pfedme_new import PFedMeNewAlgorithm
 from algorithms.drfl import DRFLAlgorithm
 
@@ -11,7 +10,7 @@ def get_algorithm(algorithm_name: str, cfg):
 
     registry = {
         "fedavg": FedAvgAlgorithm,
-        "fedavg+kd": FedAvgAlgorithm,
+        "fedavg+kd": FedAvgKDAlgorithm,
         "pfedme": PFedMeAlgorithm,
         "pfedmenew": PFedMeNewAlgorithm,
         "pfedme_new": PFedMeNewAlgorithm,
