@@ -985,7 +985,7 @@ The framework can serve as a foundation for practical federated learning deploym
 
 ---
 
-## ⚠️ Important Notes
+## 💡 Important Notes
 
 - Configuration is stored in:
   - `config_common.yaml`
@@ -1006,7 +1006,7 @@ This project is licensed under the MIT License.
 
 ---
 
-## ⚠️ Disclaimer
+## ℹ️ Disclaimer
 
 This tool was developed within the TaRDIS project
 (Grant agreement No. 101093006), funded by the Swiss State Secretariat for Education, Research and Innovation (SERI).
